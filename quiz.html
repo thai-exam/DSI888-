@@ -19,6 +19,7 @@
         .btn { padding: 6px 12px; cursor: pointer; border: none; border-radius: 6px; font-weight: bold; background: #444; color: #fff; font-size: 12px; text-decoration: none; display: inline-block; }
         .btn-submit { background: #2e7d32; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; border: none; font-weight: bold; }
         .menu-bar { display: flex; justify-content: flex-start; align-items: center; gap: 8px; font-size: 12px; flex-wrap: wrap; }
+        .stats-box { background: #252525; padding: 4px 8px; border-radius: 4px; border: 1px solid #444; display: inline-flex; gap: 8px; }
         .review-mode .choice { pointer-events: none !important; cursor: default !important; }
     </style>
 </head>
@@ -29,7 +30,11 @@
             <a href="index.html" class="btn">กลับหน้าหลัก</a>
             <button id="restartBtnTop" class="btn" style="background: #2e7d32; display: none;" onclick="location.href='quiz.html?set='+setNum">ทำข้อสอบใหม่</button>
             <button id="submitBtn" class="btn-submit" onclick="showResult()">ส่งข้อสอบ</button>
-            <span id="statsPanel">ถูก: <b id="correctVal" style="color: #4caf50;">0</b> ผิด: <b id="wrongVal" style="color: #f44336;">0</b></span>
+            <div class="stats-box" id="statsPanel">
+                <span>ถูก: <b id="correctVal" style="color: #4caf50;">0</b></span>
+                <span>ผิด: <b id="wrongVal" style="color: #f44336;">0</b></span>
+                <span>ความแม่นยำ: <b id="percentVal" style="color: #007bff;">0</b>%</span>
+            </div>
             <button class="btn" onclick="document.getElementById('titleDisplay').classList.toggle('hidden')">ซ่อนหัวข้อ</button>
         </div>
         <div class="card" id="quizCard">
@@ -63,21 +68,31 @@
         document.head.appendChild(script);
 
         function initQuiz() { 
-            quizData = RAW_DATA.map(item => { 
-                let m = item.c.map((text, idx) => ({ text, originalIdx: idx })); 
-                m.sort(() => Math.random() - 0.5); 
-                let a = m.findIndex(c => c.originalIdx === item.a); 
-                return { q: item.q, c: m.map(c => c.text), a: a, e: item.e }; 
-            }); 
-            
-            if (!isReviewMode) quizData.sort(() => Math.random() - 0.5); 
-            
-            userAnswers = new Array(quizData.length).fill(null);
             if (isReviewMode) {
+                // โหมดทบทวน: ดึงข้อมูลชุดเดิมมาแสดงแบบเป๊ะๆ
                 let history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
                 let last = history.filter(h => h.setNum == setNum).pop();
-                if (last && last.userAnswers) { userAnswers = last.userAnswers; }
+                
+                if (last && last.quizData && last.userAnswers) { 
+                    quizData = last.quizData; 
+                    userAnswers = last.userAnswers; 
+                } else {
+                    alert("ไม่พบประวัติการทำข้อสอบชุดนี้ ระบบจะพาไปทำข้อสอบใหม่ครับ");
+                    window.location.href = `quiz.html?set=${setNum}`;
+                    return;
+                }
+            } else {
+                // โหมดทำข้อสอบ: สุ่มข้อและสุ่มชอยส์ใหม่ทั้งหมด
+                quizData = RAW_DATA.map(item => { 
+                    let m = item.c.map((text, idx) => ({ text, originalIdx: idx })); 
+                    m.sort(() => Math.random() - 0.5); 
+                    let a = m.findIndex(c => c.originalIdx === item.a); 
+                    return { q: item.q, c: m.map(c => c.text), a: a, e: item.e }; 
+                }); 
+                quizData.sort(() => Math.random() - 0.5); 
+                userAnswers = new Array(quizData.length).fill(null);
             }
+            
             renderGrid(); loadQ(); updateStats(); 
         }
 
@@ -86,7 +101,6 @@
             document.getElementById('qNum').innerText = `ข้อที่ ${cur + 1} / ${quizData.length}`; 
             document.getElementById('qText').innerText = d.q; 
             
-            // ปรับตรงนี้: ถ้าเป็น Review Mode ให้แสดงเฉลยเสมอ
             let showAns = (isReviewMode || userAnswers[cur] !== null);
             document.getElementById('explain').style.display = showAns ? 'block' : 'none'; 
             document.getElementById('explain').innerText = showAns ? "เฉลย: " + (d.e || "ไม่มีคำอธิบาย") : ""; 
@@ -96,11 +110,12 @@
             d.c.forEach((text, i) => { 
                 let div = document.createElement('div'); 
                 div.className = 'choice'; 
-                // ถ้าเป็น Review Mode ให้ระบายสีเฉลยที่ถูกต้องเสมอ
+                
                 if (showAns) { 
                     if (i === d.a) div.classList.add('correct'); 
                     else if (i === userAnswers[cur]) div.classList.add('wrong'); 
                 } 
+                
                 div.innerText = text; 
                 div.onclick = () => { 
                     if(userAnswers[cur] === null && !isReviewMode) { 
@@ -113,10 +128,24 @@
         }
 
         function updateStats() { 
-            correctCount = userAnswers.filter((a, i) => a !== null && a === quizData[i].a).length;
-            wrongCount = userAnswers.filter((a, i) => a !== null && a !== quizData[i].a).length;
+            correctCount = 0;
+            wrongCount = 0;
+            let answeredCount = 0;
+            
+            userAnswers.forEach((ans, i) => {
+                if (ans !== null) {
+                    answeredCount++;
+                    if (ans === quizData[i].a) correctCount++;
+                    else wrongCount++;
+                }
+            });
+
+            // คำนวณเปอร์เซ็นต์ความแม่นยำจากข้อที่ทำไปแล้ว (เช่น ทำ 3 ข้อ ถูก 2 จะแสดงเป็น 67%)
+            let percent = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
+
             document.getElementById('correctVal').innerText = correctCount; 
             document.getElementById('wrongVal').innerText = wrongCount; 
+            document.getElementById('percentVal').innerText = percent;
         }
 
         function changeQ(step) { cur = (cur + step + quizData.length) % quizData.length; loadQ(); }
@@ -125,7 +154,7 @@
             let g = document.getElementById('grid'); g.innerHTML = ''; 
             quizData.forEach((_, i) => { 
                 let box = document.createElement('div'); box.className = 'box';
-                // สถานะ Grid ตามจริง (ทำแล้ว=สี, ยังไม่ทำ=ว่าง)
+                // ถ้าตอบแล้วให้ใส่สีเขียวหรือแดง ถ้ายังไม่ตอบจะไม่มีคลาสสี (ตามเงื่อนไขเป๊ะๆ)
                 if (userAnswers[i] !== null) {
                     box.classList.add(userAnswers[i] === quizData[i].a ? 'answered-correct' : 'answered-wrong');
                 }
@@ -138,11 +167,25 @@
         function showResult() {
             clearInterval(timerInterval);
             let now = new Date();
-            let resultData = { setNum: setNum, score: correctCount, wrong: wrongCount, total: quizData.length, percent: Math.round((correctCount / quizData.length) * 100), duration: document.getElementById('timer').innerText, endTime: `${now.getHours()}:${now.getMinutes()}`, date: now.toLocaleDateString('th-TH'), userAnswers: userAnswers };
+            // บันทึก quizData ลงไปในประวัติด้วย เพื่อให้ดึงกลับมาแสดงได้ 100% เหมือนเดิม
+            let resultData = { 
+                setNum: setNum, 
+                score: correctCount, 
+                wrong: wrongCount, 
+                total: quizData.length, 
+                percent: Math.round((correctCount / quizData.length) * 100), 
+                duration: document.getElementById('timer').innerText, 
+                endTime: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`, 
+                date: now.toLocaleDateString('th-TH'), 
+                userAnswers: userAnswers,
+                quizData: quizData
+            };
+            
             localStorage.setItem('lastResult', JSON.stringify(resultData));
             let history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
             history.push(resultData);
             localStorage.setItem('quizHistory', JSON.stringify(history));
+            
             window.location.href = 'finish.html?set=' + setNum;
         }
 
