@@ -42,11 +42,33 @@
         .correct { background: #1b5e20 !important; border-color: #2e7d32 !important; color: #fff !important; }
         .wrong { background: #b71c1c !important; border-color: #c62828 !important; color: #fff !important; }
         
+        /* แถบเฉลย (ปรับปรุงให้มีขอบสีขาวตามต้องการ) */
+        #explain { 
+            display:none; 
+            padding: 15px; 
+            background: #252525; 
+            border: 2px solid #ffffff; /* ขอบสีขาว */
+            border-left: 5px solid #007bff; /* แถบสีน้ำเงินด้านซ้ายยังคงไว้เพื่อให้ดูมีมิติ */
+            border-radius: 6px;
+            font-size: var(--font-text); 
+            margin-top: 15px;
+            color: #ddd;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
         /* ปุ่มกริดด้านล่าง */
         .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; }
-        .box { padding: var(--pad-box); text-align: center; border: 1px solid #444; cursor: pointer; border-radius: 4px; font-size: var(--font-box); background: #252525; color: #bbb; }
+        .box { padding: var(--pad-box); text-align: center; border: 1px solid #444; cursor: pointer; border-radius: 4px; font-size: var(--font-box); background: #252525; color: #bbb; transition: all 0.2s; }
         .box.answered-correct { background: #1b5e20; color: #fff; border-color: #2e7d32; }
         .box.answered-wrong { background: #b71c1c; color: #fff; border-color: #c62828; }
+        
+        /* CSS ใหม่สำหรับกล่องข้อที่กำลังเลือกอยู่ (มีกรอบสีขาวและเรืองแสง) */
+        .box.active {
+            border: 2px solid #ffffff !important;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            font-weight: bold;
+            color: #ffffff;
+        }
         
         /* ปุ่มต่างๆ */
         .btn { padding: var(--pad-btn); cursor: pointer; border: none; border-radius: 6px; font-weight: bold; background: #444; color: #fff; font-size: var(--font-btn); text-decoration: none; display: inline-block; text-align: center; }
@@ -98,7 +120,7 @@
 
             <p id="qText"></p>
             <div id="choices"></div>
-            <p id="explain" style="display:none; padding: 10px; background: #2c2c2c; border-left: 3px solid #007bff; font-size: var(--font-text); margin-top: 15px;"></p>
+            <p id="explain"></p>
             
             <div class="bottom-controls">
                 <button class="btn" style="flex: 1;" onclick="changeQ(-1)">ย้อนกลับ</button>
@@ -172,14 +194,28 @@
             renderGrid(); loadQ(); updateStats(); 
         }
 
+        // ฟังก์ชันสำหรับอัปเดตกรอบสีขาวในตาราง
+        function updateGridActive() {
+            let boxes = document.querySelectorAll('.box');
+            if (boxes.length > 0) {
+                // ล้างคลาส active ออกจากทุกกล่องก่อน
+                boxes.forEach(b => b.classList.remove('active'));
+                // ใส่คลาส active ให้กล่องปัจจุบัน
+                if (boxes[cur]) {
+                    boxes[cur].classList.add('active');
+                }
+            }
+        }
+
         function loadQ() { 
             let d = quizData[cur]; 
             document.getElementById('qNum').innerText = `ข้อที่ ${cur + 1} / ${quizData.length}`; 
             document.getElementById('qText').innerText = d.q; 
             
             let showAns = (isReviewMode || userAnswers[cur] !== null);
-            document.getElementById('explain').style.display = showAns ? 'block' : 'none'; 
-            document.getElementById('explain').innerText = showAns ? "เฉลย: " + (d.e || "ไม่มีคำอธิบาย") : ""; 
+            let explainEl = document.getElementById('explain');
+            explainEl.style.display = showAns ? 'block' : 'none'; 
+            explainEl.innerText = showAns ? "เฉลย: " + (d.e || "ไม่มีคำอธิบาย") : ""; 
             
             let ch = document.getElementById('choices'); 
             ch.innerHTML = ''; 
@@ -201,6 +237,9 @@
                 }; 
                 ch.appendChild(div); 
             }); 
+            
+            // อัปเดตไฮไลท์ตารางเมื่อโหลดข้อใหม่
+            updateGridActive();
         }
 
         function updateStats() { 
@@ -231,6 +270,9 @@
                 }
                 box.innerText = i + 1; box.onclick = () => { cur = i; loadQ(); }; g.appendChild(box); 
             }); 
+            
+            // อัปเดตไฮไลท์ตารางตอนเรนเดอร์ครั้งแรก
+            updateGridActive();
         }
 
         function startTimer() { timerInterval = setInterval(() => { time++; let m = Math.floor(time/60), s = time%60; document.getElementById('timer').innerText = `เวลา: ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; }, 1000); }
