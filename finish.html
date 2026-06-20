@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>สรุปผลคะแนน</title>
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background: #121212; color: #e0e0e0; padding: 20px; margin: 0; }
+        .container { max-width: 650px; margin: auto; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { padding: 10px 20px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; color: #fff; text-decoration: none; display: inline-block; font-size: 14px; text-align: center; }
+        .btn-restart { background: #2e7d32; }
+        .btn-review { background: #007bff; }
+        .btn-clear { background: #b71c1c; }
+        .btn-home { background: #444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card" id="currentResult"><h3>กำลังสรุปผลคะแนน...</h3></div>
+        
+        <div class="card btn-group">
+            <a href="#" id="restartBtn" class="btn btn-restart">เริ่มสอบใหม่ (ชุดนี้)</a>
+            <a href="#" id="reviewBtn" class="btn btn-review">ทบทวนข้อสอบ</a>
+            <button class="btn btn-clear" onclick="clearHistory()">ล้างประวัติชุดนี้</button>
+            <a href="index.html" class="btn btn-home">กลับหน้าหลัก</a>
+        </div>
+
+        <div class="card">
+            <h3 id="historyTitle" style="font-size: 16px;">ประวัติการทำข้อสอบชุดนี้</h3>
+            <div id="historyList" style="font-size: 13px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentSet = urlParams.get('set') || '01'; 
+
+        // ลิงก์ปุ่มไปยังชุดข้อสอบปัจจุบันแบบไดนามิก
+        document.getElementById('restartBtn').href = `quiz.html?set=${currentSet}`;
+        document.getElementById('reviewBtn').href = `quiz.html?mode=review&set=${currentSet}`;
+        document.getElementById('historyTitle').innerText = `ประวัติการทำข้อสอบชุดนี้ (ชุดที่ ${currentSet})`;
+
+        // ฟังก์ชันสร้างเวลา 24 ชม. ป้องกันค่าหลุดหรือแสดงเพี้ยน
+        function getFinishTime(data) {
+            if (data.endTime && data.endTime !== "undefined") return data.endTime;
+            let now = new Date();
+            let hours = now.getHours().toString().padStart(2, '0');
+            let minutes = now.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
+        let history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+        // กรองแสดงผลประวัติเฉพาะชุดปัจจุบันที่เลือกทำ
+        let filtered = history.filter(h => h.setNum == currentSet);
+        let last = filtered[filtered.length - 1];
+
+        if(last) {
+            document.getElementById('currentResult').innerHTML = `
+                <h2>ผลคะแนนล่าสุด (ชุดที่ ${currentSet})</h2>
+                <div style="font-size: 16px;">
+                    คะแนน: <b>${last.score} / ${last.total}</b> (${last.percent}%)<br>
+                    ใช้เวลา : ${last.duration.replace('เวลา: ', '')}<br>
+                    เสร็จตอน : ${getFinishTime(last)}
+                </div>
+            `;
+        } else {
+            document.getElementById('currentResult').innerHTML = `
+                <h2>ผลคะแนนล่าสุด (ชุดที่ ${currentSet})</h2>
+                <div style="font-size: 16px; color: #888;">ยังไม่มีประวัติการทำข้อสอบชุดนี้</div>
+            `;
+        }
+
+        // ล้างประวัติเฉพาะชุดปัจจุบันตามชื่อปุ่ม
+        function clearHistory() {
+            if(confirm(`คุณต้องการล้างประวัติของข้อสอบชุดที่ ${currentSet} ใช่หรือไม่?`)) {
+                let allHistory = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+                let updatedHistory = allHistory.filter(h => h.setNum != currentSet);
+                localStorage.setItem('quizHistory', JSON.stringify(updatedHistory));
+                location.reload();
+            }
+        }
+
+        // แสดงผลรายการประวัติย้อนหลัง
+        document.getElementById('historyList').innerHTML = filtered.slice().reverse().map(h => {
+            let skipped = h.skipped !== undefined ? h.skipped : (h.total - h.score - h.wrong);
+            return `
+                <div style="border-bottom:1px solid #333; padding: 15px 0;">
+                    <div>วันที่: ${h.date} | เวลา: ${getFinishTime(h)} | ใช้เวลา : ${h.duration.replace('เวลา: ', '')}</div>
+                    <div>ถูก: ${h.score} | ผิด: ${h.wrong} | ข้าม: ${skipped}</div>
+                    <div style="margin-top:5px; color:#4caf50;">คะแนนรวม: <b>${h.score}/${h.total} (${h.percent}%)</b></div>
+                </div>
+            `;
+        }).join('');
+    </script>
+</body>
+</html>
