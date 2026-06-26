@@ -9,7 +9,31 @@
         .container { max-width: 650px; margin: auto; }
         .card { background: #1e1e1e; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; border: 1px solid #333; }
         h1 { color: #ffffff; margin-bottom: 25px; font-size: 28px; }
-        .quiz-list { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+        
+        /* สไตล์สำหรับกล่องค้นหาที่เพิ่มเข้ามา */
+        .search-box {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 1px solid #555;
+            background-color: #252525;
+            color: #fff;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            font-family: 'Sarabun', sans-serif;
+            transition: border-color 0.2s;
+        }
+        .search-box:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 8px rgba(0,123,255,0.3);
+        }
+        .search-box::placeholder {
+            color: #888;
+        }
+
+        .quiz-list { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
         .quiz-btn { display: block; width: 100%; padding: 16px 20px; background: #252525; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; box-sizing: border-box; transition: all 0.2s ease; text-align: left; border: 1px solid #444; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .quiz-btn:hover { background: #333333; border-color: #007bff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,123,255,0.15); }
     </style>
@@ -18,7 +42,11 @@
     <div class="container">
         <div class="card">
             <h1>เลือกชุดข้อสอบ</h1>
-            <div class="quiz-list">
+            
+            <!-- เพิ่มช่องค้นหาตรงนี้ -->
+            <input type="text" id="searchInput" class="search-box" placeholder="🔍 ค้นหาชุดข้อสอบ... (เช่น ป.อาญา, 15, พ.ร.บ.)" onkeyup="filterQuizzes()">
+
+            <div class="quiz-list" id="quizList">
                 <a href="quiz.html?set=01" class="quiz-btn">ชุดที่ 01 พ.ร.บ.การสอบสวนคดีพิเศษ พ.ศ. 2547 และที่แก้ไขเพิ่มเติมถึง (ฉบับที่ 2) พ.ศ. 2551 (สรุป+ปรนัย100+จำเต็ม)</a>
                 <a href="quiz.html?set=02" class="quiz-btn">ชุดที่ 02 ประกาศกรมสอบสวนคดีพิเละการสอบสวนคดีพิเศษ ลงวันที่ 25 มิถุนายน พ.ศ. 2568</a>
                 <a href="quiz.html?set=03" class="quiz-btn">ชุดที่ 03 ข้อบังคับ กคพ. ว่าด้วยแนวทางสอบสวนบุคคลที่เป็นพยานสำคัญในคดีพิเศษ พ.ศ. 2568 (ฉบับเต็ม+ปรนัย30) </a>
@@ -36,11 +64,42 @@
                 <a href="quiz.html?set=15" class="quiz-btn">ชุดที่ 15 พ.ร.บ.ความรับผิดทางละเมิดของเจ้าหน้าที่ พ.ศ. 2539 (ตัวเต็ม+สรุป+ข้อสอบ 100 ข้อพร้อมเฉลย)</a>
                 <a href="quiz.html?set=16" class="quiz-btn">ชุดที่ 16 พ.ร.ฏ.ว่าด้วยหลักเกณฑ์และวิธีการบริหารกิจการบ้านเมืองที่ดี พ.ศ. 2546 และฉบับแก้ไขเพิ่มเติมถึง (ฉบับที่ 2) พ.ศ.2562 (พร้อมตัวเต็ม+สรุป+ข้อสอบ 500 ข้อพร้อมเฉลย)</a>
                 <a href="quiz.html?set=17" class="quiz-btn">ชุดที่ 17 แนวข้อสอบ ความรู้เกี่ยวกับสภาพแวดล้อม สถานการณ์ปัจจุบันทางการเมือง เศรษฐกิจ สังคม และเทคโนโลยี ทั้งของประเทศไทยและต่างประเทศ  ข้อสอบ 100ข้อ</a>
-                <a href="quiz.html?set=18" class="quiz-btn">ชุดที่ 18 ป.อาญา (ข้อสอบ500+เฉลย) </a> 
-                <a href="quiz.html?set=19" class="quiz-btn">ชุดที่ 19 ป.วิ.อาญา  (สรุป+ปรนัย300+ฉบับเต็ม) </a>
+                <a href="quiz.html?set=18" class="quiz-btn">ชุดที่ 18 ป.อาญา (ข้อสอบ500+เฉลย) (ข้อที่001-100) </a>
+				<a href="quiz.html?set=181" class="quiz-btn">ชุดที่ 18 ป.อาญา (ข้อที่101-200) </a> 				
+				<a href="quiz.html?set=182" class="quiz-btn">ชุดที่ 18 ป.อาญา (ข้อที่201-300) </a> 
+				<a href="quiz.html?set=183" class="quiz-btn">ชุดที่ 18 ป.อาญา (ข้อที่301-400) </a> 
+				<a href="quiz.html?set=184" class="quiz-btn">ชุดที่ 18 ป.อาญา (ข้อที่401-500) </a> 
+                <a href="quiz.html?set=19" class="quiz-btn">ชุดที่ 19 ป.วิ.อาญา  (สรุป+ปรนัย300+ฉบับเต็ม) (ข้อที่001-100)</a>
+				<a href="quiz.html?set=191" class="quiz-btn">ชุดที่ 19 ป.วิ.อาญา (ข้อที่101-200) </a>
+				<a href="quiz.html?set=192" class="quiz-btn">ชุดที่ 19 ป.วิ.อาญา  (ข้อที่201-300) </a>
+				<a href="quiz.html?set=20" class="quiz-btn">ชุดที่ 20 Claued</a>
+				<a href="quiz.html?set=21" class="quiz-btn">ชุดที่ 21</a>
                 <a href="quiz.html?set=--" class="quiz-btn">ชุดที่ --</a>
-                </div>
+            </div>
         </div>
     </div>
+
+    <!-- สคริปต์สำหรับระบบค้นหา -->
+    <script>
+        function filterQuizzes() {
+            // ดึงข้อความที่พิมพ์ในช่องค้นหาและแปลงเป็นตัวพิมพ์เล็ก
+            let input = document.getElementById('searchInput').value.toLowerCase();
+            // ดึงปุ่มข้อสอบทั้งหมดมาเก็บไว้
+            let buttons = document.querySelectorAll('.quiz-list .quiz-btn');
+
+            // วนลูปเช็คปุ่มทีละอัน
+            buttons.forEach(function(button) {
+                // ดึงข้อความในปุ่มมาแปลงเป็นตัวพิมพ์เล็ก
+                let text = button.innerText.toLowerCase();
+                
+                // ถ้าข้อความในปุ่ม มีคำที่ค้นหาซ่อนอยู่
+                if (text.includes(input)) {
+                    button.style.display = "block"; // แสดงปุ่มนั้น
+                } else {
+                    button.style.display = "none"; // ซ่อนปุ่มที่ไม่ตรง
+                }
+            });
+        }
+    </script>
 </body>
 </html>

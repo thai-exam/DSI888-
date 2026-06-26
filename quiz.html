@@ -42,13 +42,13 @@
         .correct { background: #1b5e20 !important; border-color: #2e7d32 !important; color: #fff !important; }
         .wrong { background: #b71c1c !important; border-color: #c62828 !important; color: #fff !important; }
         
-        /* แถบเฉลย (ปรับปรุงให้มีขอบสีขาวตามต้องการ) */
+        /* แถบเฉลย */
         #explain { 
             display:none; 
             padding: 15px; 
             background: #252525; 
-            border: 2px solid #ffffff; /* ขอบสีขาว */
-            border-left: 5px solid #007bff; /* แถบสีน้ำเงินด้านซ้ายยังคงไว้เพื่อให้ดูมีมิติ */
+            border: 2px solid #ffffff; 
+            border-left: 5px solid #007bff; 
             border-radius: 6px;
             font-size: var(--font-text); 
             margin-top: 15px;
@@ -62,7 +62,7 @@
         .box.answered-correct { background: #1b5e20; color: #fff; border-color: #2e7d32; }
         .box.answered-wrong { background: #b71c1c; color: #fff; border-color: #c62828; }
         
-        /* CSS ใหม่สำหรับกล่องข้อที่กำลังเลือกอยู่ (มีกรอบสีขาวและเรืองแสง) */
+        /* กล่องข้อที่กำลังเลือกอยู่ */
         .box.active {
             border: 2px solid #ffffff !important;
             box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
@@ -83,13 +83,11 @@
 </head>
 <body>
     <script>
-        // โหลด Scale ที่บันทึกไว้ก่อนเรนเดอร์หน้าเว็บเพื่อป้องกัน UI กระตุก
         let currentScale = parseFloat(localStorage.getItem('appScale')) || 1;
         document.documentElement.style.setProperty('--scale', currentScale);
     </script>
 
     <div class="container">
-        
         <div id="topHeader">
             <h1 id="titleDisplay" style="text-align:center; margin: 0 0 10px 0;">กำลังโหลด...</h1>
             <div class="card menu-bar">
@@ -106,7 +104,6 @@
         </div>
 
         <div class="card" id="quizCard">
-            
             <div class="info-bar">
                 <h2 id="qNum">ข้อที่ 1 / 100</h2>
                 <span id="timer" class="timer-badge">เวลา: 00:00</span>
@@ -133,39 +130,89 @@
     </div>
 
     <script>
+        const extParams = new URLSearchParams(window.location.search);
+        const mixMode = extParams.get('mode');
+        
+        if (mixMode === 'mixed' || extParams.get('start') || extParams.get('random')) {
+            const originalCreateElement = document.createElement;
+            document.createElement = function(tagName) {
+                const el = originalCreateElement.call(document, tagName);
+                if (tagName.toLowerCase() === 'script') {
+                    Object.defineProperty(el, 'src', {
+                        set(val) { 
+                            this._src = val; 
+                            setTimeout(() => {
+                                if(mixMode === 'mixed') {
+                                    window.SUBJECT_NAME = "ข้อสอบสุ่มแบบผสมชุดวิชา";
+                                    window.RAW_DATA = JSON.parse(sessionStorage.getItem('mixedQuizData') || '[]');
+                                }
+                                if (this.onload) this.onload(); 
+                            }, 50);
+                        },
+                        get() { return this._src; }
+                    });
+                }
+                return el;
+            };
+        }
+    </script>
+
+    <script>
         const params = new URLSearchParams(window.location.search);
         const setNum = params.get('set') || '01';
         const isReviewMode = params.get('mode') === 'review';
+        // สร้าง Key สำหรับเซฟแยกตามชุดวิชา (ถ้าโหมดผสม จะเป็น quiz_progress_MIX)
+        const saveKey = 'quiz_progress_' + setNum; 
+
         let cur = 0, correctCount = 0, wrongCount = 0, userAnswers = [], time = 0, timerInterval, quizData = [];
         
-        // ฟังก์ชันระบบซูม (บันทึกค่าลง localStorage)
+        // ฟังก์ชันระบบซูม 
         function adjustScale(step, reset = false) {
             if (reset) {
                 currentScale = 1;
             } else {
                 currentScale += step;
-                if (currentScale < 0.7) currentScale = 0.7; // เล็กสุด
-                if (currentScale > 1.8) currentScale = 1.8; // ใหญ่สุด
+                if (currentScale < 0.7) currentScale = 0.7; 
+                if (currentScale > 1.8) currentScale = 1.8; 
             }
             document.documentElement.style.setProperty('--scale', currentScale);
-            localStorage.setItem('appScale', currentScale); // จำสเกลไว้ใช้หน้าอื่น
+            localStorage.setItem('appScale', currentScale);
         }
 
-        // ฟังก์ชันซ่อน/โชว์ เมนู และเปลี่ยนชื่อปุ่ม
         function toggleMenu(btn) {
             let header = document.getElementById('topHeader');
             header.classList.toggle('hidden');
             btn.innerText = header.classList.contains('hidden') ? 'โชว์เมนู' : 'ซ่อนเมนู';
         }
 
+        // โหลดข้อมูลข้อสอบดิบ
         let script = document.createElement('script');
         script.src = `data${setNum}.js`;
         script.onload = () => { 
-            document.getElementById('titleDisplay').innerText = SUBJECT_NAME + (isReviewMode ? " (โหมดทบทวน)" : ""); 
+            document.getElementById('titleDisplay').innerText = (typeof SUBJECT_NAME !== 'undefined' ? SUBJECT_NAME : `ชุดที่ ${setNum}`) + (isReviewMode ? " (โหมดทบทวน)" : ""); 
             initQuiz(); 
             if(!isReviewMode) startTimer(); 
         };
         document.head.appendChild(script);
+
+        // ==========================================
+        // ฟังก์ชัน บันทึก/ล้าง ข้อมูลค้างทำ (Auto Save)
+        // ==========================================
+        function saveProgress() {
+            if (isReviewMode || quizData.length === 0) return;
+            let progressData = {
+                quizData: quizData,
+                userAnswers: userAnswers,
+                cur: cur,
+                time: time
+            };
+            localStorage.setItem(saveKey, JSON.stringify(progressData));
+        }
+
+        function clearProgress() {
+            localStorage.removeItem(saveKey);
+        }
+        // ==========================================
 
         function initQuiz() { 
             if (isReviewMode) {
@@ -181,6 +228,27 @@
                     return;
                 }
             } else {
+                // เช็คว่ามีของที่ทำค้างไว้ในชุดนี้หรือไม่
+                let savedProgress = localStorage.getItem(saveKey);
+                
+                if (savedProgress) {
+                    // แจ้งเตือนถามผู้ใช้ว่าจะทำต่อไหม
+                    if (confirm(`พบข้อสอบที่คุณทำค้างไว้ (ยังส่งคำตอบไม่เสร็จ)\nคุณต้องการทำต่อจากที่ค้างไว้หรือไม่?\n\n- กด [ตกลง / OK] เพื่อทำต่อจากเดิม\n- กด [ยกเลิก / Cancel] เพื่อทิ้งของเก่าแล้วเริ่มทำใหม่`)) {
+                        
+                        let parsed = JSON.parse(savedProgress);
+                        quizData = parsed.quizData;
+                        userAnswers = parsed.userAnswers;
+                        cur = parsed.cur || 0;
+                        time = parsed.time || 0;
+                        
+                        renderGrid(); loadQ(); updateStats();
+                        return; // โหลดของเก่าเสร็จแล้ว ให้ออกจากฟังก์ชันเลย ไม่ต้องสร้างข้อสอบใหม่
+                    } else {
+                        clearProgress(); // ถ้ากดยกเลิก ให้ลบของเก่าทิ้งไป
+                    }
+                }
+
+                // กรณีไม่มีของค้าง หรือเลือกไม่ทำต่อ ให้ดึงชุดใหม่มาผสม
                 quizData = RAW_DATA.map(item => { 
                     let m = item.c.map((text, idx) => ({ text, originalIdx: idx })); 
                     m.sort(() => Math.random() - 0.5); 
@@ -189,21 +257,32 @@
                 }); 
                 quizData.sort(() => Math.random() - 0.5); 
                 userAnswers = new Array(quizData.length).fill(null);
+
+                const startIdx = parseInt(params.get('start'));
+                const endIdx = parseInt(params.get('end'));
+                const randLimit = parseInt(params.get('random'));
+                
+                if (!isNaN(startIdx) && !isNaN(endIdx)) {
+                    quizData = quizData.slice(startIdx, endIdx);
+                    userAnswers = new Array(quizData.length).fill(null);
+                }
+                if (!isNaN(randLimit) && randLimit > 0) {
+                    quizData = quizData.slice(0, randLimit);
+                    userAnswers = new Array(quizData.length).fill(null);
+                }
+                
+                // สร้างของใหม่เสร็จปุ๊บ บันทึกสถานะเริ่มต้นไว้เลย
+                saveProgress();
             }
             
             renderGrid(); loadQ(); updateStats(); 
         }
 
-        // ฟังก์ชันสำหรับอัปเดตกรอบสีขาวในตาราง
         function updateGridActive() {
             let boxes = document.querySelectorAll('.box');
             if (boxes.length > 0) {
-                // ล้างคลาส active ออกจากทุกกล่องก่อน
                 boxes.forEach(b => b.classList.remove('active'));
-                // ใส่คลาส active ให้กล่องปัจจุบัน
-                if (boxes[cur]) {
-                    boxes[cur].classList.add('active');
-                }
+                if (boxes[cur]) boxes[cur].classList.add('active');
             }
         }
 
@@ -232,13 +311,13 @@
                 div.onclick = () => { 
                     if(userAnswers[cur] === null && !isReviewMode) { 
                         userAnswers[cur] = i; 
+                        saveProgress(); // <-- เซฟความคืบหน้าทันทีที่ตอบคำถาม
                         updateStats(); renderGrid(); loadQ(); 
                     } 
                 }; 
                 ch.appendChild(div); 
             }); 
             
-            // อัปเดตไฮไลท์ตารางเมื่อโหลดข้อใหม่
             updateGridActive();
         }
 
@@ -259,7 +338,11 @@
             document.getElementById('percentVal').innerText = percent;
         }
 
-        function changeQ(step) { cur = (cur + step + quizData.length) % quizData.length; loadQ(); }
+        function changeQ(step) { 
+            cur = (cur + step + quizData.length) % quizData.length; 
+            saveProgress(); // เซฟทุกครั้งที่เลื่อนข้อ
+            loadQ(); 
+        }
         
         function renderGrid() { 
             let g = document.getElementById('grid'); g.innerHTML = ''; 
@@ -268,14 +351,27 @@
                 if (userAnswers[i] !== null) {
                     box.classList.add(userAnswers[i] === quizData[i].a ? 'answered-correct' : 'answered-wrong');
                 }
-                box.innerText = i + 1; box.onclick = () => { cur = i; loadQ(); }; g.appendChild(box); 
+                box.innerText = i + 1; 
+                box.onclick = () => { 
+                    cur = i; 
+                    saveProgress(); // เซฟเมื่อกดตารางกระโดดข้ามข้อ
+                    loadQ(); 
+                }; 
+                g.appendChild(box); 
             }); 
-            
-            // อัปเดตไฮไลท์ตารางตอนเรนเดอร์ครั้งแรก
             updateGridActive();
         }
 
-        function startTimer() { timerInterval = setInterval(() => { time++; let m = Math.floor(time/60), s = time%60; document.getElementById('timer').innerText = `เวลา: ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; }, 1000); }
+        function startTimer() { 
+            timerInterval = setInterval(() => { 
+                time++; 
+                let m = Math.floor(time/60), s = time%60; 
+                document.getElementById('timer').innerText = `เวลา: ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; 
+                
+                // ให้ระบบแอบเซฟเวลาที่ใช้ไป ทุกๆ 5 วินาที
+                if (time % 5 === 0) saveProgress(); 
+            }, 1000); 
+        }
         
         function showResult() {
             clearInterval(timerInterval);
@@ -297,6 +393,9 @@
             let history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
             history.push(resultData);
             localStorage.setItem('quizHistory', JSON.stringify(history));
+            
+            // ส่งคำตอบเสร็จแล้ว ให้ล้างไฟล์ค้างทำออก เพื่อครั้งหน้าจะได้เริ่มใหม่ได้เลย
+            clearProgress();
             
             window.location.href = 'finish.html?set=' + setNum;
         }
