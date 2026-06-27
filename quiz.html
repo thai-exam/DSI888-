@@ -43,6 +43,49 @@
         .wrong { background: #b71c1c !important; border-color: #c62828 !important; color: #fff !important; }
         
         /* แถบเฉลย */
+		/* ปุ่มกริดด้านล่าง */
+        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; }
+        
+        /* ตั้งค่ากล่องให้เป็นรูปดาวขอบมนโดยใช้เทคนิค Mask Image */
+        .box { 
+            aspect-ratio: 1 / 1; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer; 
+            font-size: var(--font-box); 
+            background: #333333; /* สีดาวตอนยังไม่ตอบ (เทาเข้ม) */
+            color: #ffffff; 
+            transition: all 0.2s;
+            position: relative;
+            
+            /* โค้ดสร้างรูปดาวขอบมน */
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.1 2.2a1 1 0 0 1 1.8 0l2.8 5.6 6.2.9a1 1 0 0 1 .5 1.7l-4.5 4.4 1.1 6.2a1 1 0 0 1-1.5 1L12 18.8l-5.5 2.9a1 1 0 0 1-1.5-1l1.1-6.2-4.5-4.4a1 1 0 0 1 .5-1.7l6.2-.9 2.8-5.6z'/%3E%3C/svg%3E");
+            -webkit-mask-size: 100% 100%;
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.1 2.2a1 1 0 0 1 1.8 0l2.8 5.6 6.2.9a1 1 0 0 1 .5 1.7l-4.5 4.4 1.1 6.2a1 1 0 0 1-1.5 1L12 18.8l-5.5 2.9a1 1 0 0 1-1.5-1l1.1-6.2-4.5-4.4a1 1 0 0 1 .5-1.7l6.2-.9 2.8-5.6z'/%3E%3C/svg%3E");
+            mask-size: 100% 100%;
+            mask-repeat: no-repeat;
+            mask-position: center;
+        }
+        
+        /* ข้อที่ทำถูกเป็น "สีเหลือง" (เปลี่ยนตัวหนังสือเป็นสีดำเพื่อให้มองเห็นตัวเลขชัดเจน) */
+        .box.answered-correct { background: #fbc02d !important; color: #000 !important; font-weight: bold; }
+        
+        /* ข้อที่ทำผิดเป็นสีแดง */
+        .box.answered-wrong { background: #b71c1c !important; color: #fff !important; }
+        
+        /* ข้อที่กำลังเลือกอยู่ (แรเงาเรืองแสง + ขยายใหญ่ขึ้น) */
+        .box.active {
+            background: #007bff !important; /* ดาวเป็นสีน้ำเงิน */
+            color: #ffffff !important;
+            transform: scale(1.2); /* ขยายขนาดดาวให้เด้งขึ้นมา */
+            font-weight: bold;
+            z-index: 10;
+            /* เอฟเฟกต์แรเงา (Drop Shadow) ด้านหลังดาว */
+            filter: drop-shadow(0px 0px 10px rgba(0, 123, 255, 1));
+        }
         #explain { 
             display:none; 
             padding: 15px; 
